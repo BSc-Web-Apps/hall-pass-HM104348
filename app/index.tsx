@@ -24,6 +24,8 @@ type Task = {
 export default function HomeScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [newTaskLabel, setNewTaskLabel] = useState<string>("");
+  const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -63,11 +65,17 @@ export default function HomeScreen() {
   };
 
   const addTask = () => {
+    if (newTaskLabel.trim() === "") {
+      Alert.alert("Please enter a valid task!");
+      return;
+    }
     const newId = Date.now();
     setTasks((prev) => [
       ...prev,
-      { id: newId, label: `New Task`, checked: false, category: "General" },
+      { id: newId, label: newTaskLabel, checked: false, category: "General" },
     ]);
+    setNewTaskLabel("");
+    setIsAdding(false);
   };
 
   const updateTaskLabel = (id: number, newText: string) => {
@@ -105,10 +113,19 @@ export default function HomeScreen() {
     );
   };
 
-  const renderRightActions = (id: number) => (
-    <View className="flex justify-center items-end pr-6 bg-red-600 h-full rounded-lg">
-      <Pressable onPress={() => deleteTask(id)} className="px-4 py-3">
-        <Text className="text-white text-lg font-bold">Delete</Text>
+  const renderRightActions = (item: Task) => (
+    <View className="flex flex-row h-full">
+      <Pressable
+        onPress={() => setEditingId(item.id)}
+        className="bg-yellow-500 justify-center px-4"
+      >
+        <Text className="text-white font-bold">Edit</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => deleteTask(item.id)}
+        className="bg-red-600 justify-center px-4"
+      >
+        <Text className="text-white font-bold">Delete</Text>
       </Pressable>
     </View>
   );
@@ -117,7 +134,7 @@ export default function HomeScreen() {
     const fadeAnim = new Animated.Value(1);
 
     return (
-      <Swipeable renderRightActions={() => renderRightActions(item.id)}>
+      <Swipeable renderRightActions={() => renderRightActions(item)}>
         <Animated.View
           style={{
             opacity: fadeAnim,
@@ -132,14 +149,11 @@ export default function HomeScreen() {
           }}
           className="mb-1 border-b border-gray-400 w-full px-4"
         >
-          {/* Use Pressable instead of View */}
-          <Pressable
-            onLongPress={() => handleTaskLongPress(item)} // Long press handler here
+          <View
             className={`flex flex-row items-center py-3 rounded-lg ${
               item.checked ? "bg-gray-700" : "bg-transparent"
             }`}
           >
-            {/* Checkbox */}
             <Pressable
               onPress={() => toggleTask(item.id)}
               className={`w-6 h-6 border-2 border-white mr-4 items-center justify-center ${
@@ -149,19 +163,21 @@ export default function HomeScreen() {
               {item.checked && <Text className="text-white text-xs">✓</Text>}
             </Pressable>
 
-            {/* Label / Input */}
             <View className="flex-1">
               {editingId === item.id ? (
                 <TextInput
                   value={item.label}
                   onChangeText={(text) => updateTaskLabel(item.id, text)}
-                  onBlur={() => setEditingId(null)} // Lose focus when done
+                  onBlur={() => setEditingId(null)}
                   autoFocus
                   className="text-black px-2 py-1 rounded-lg border bg-white"
                   style={{ color: "black" }}
                 />
               ) : (
-                <Pressable onPress={() => handleTaskLongPress(item)}>
+                <Pressable
+                  onPress={() => setEditingId(item.id)}
+                  onLongPress={() => handleTaskLongPress(item)}
+                >
                   <Text
                     className={`${
                       item.checked ? "text-gray-400 line-through" : "text-foreground"
@@ -173,7 +189,7 @@ export default function HomeScreen() {
                 </Pressable>
               )}
             </View>
-          </Pressable>
+          </View>
         </Animated.View>
       </Swipeable>
     );
@@ -182,12 +198,8 @@ export default function HomeScreen() {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View className="flex flex-1 py-16 bg-background items-center">
-        {/* Logo */}
-        <Text className="text-4xl font-bold text-foreground mb-8">
-          Hall Pass
-        </Text>
+        <Text className="text-4xl font-bold text-foreground mb-8">Hall Pass</Text>
 
-        {/* No tasks prompt */}
         {tasks.length === 0 ? (
           <Text className="text-lg text-gray-500">Please create a task!</Text>
         ) : (
@@ -199,13 +211,31 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* Add Task Button */}
-        <Pressable
-          onPress={addTask}
-          className="mt-6 bg-blue-500 px-6 py-3 rounded-lg"
-        >
-          <Text className="text-white font-semibold">+ Add Task</Text>
-        </Pressable>
+        {!isAdding && (
+          <Pressable
+            onPress={() => setIsAdding(true)}
+            className="mt-6 bg-blue-500 px-6 py-3 rounded-lg"
+          >
+            <Text className="text-white font-semibold">+ Add Task</Text>
+          </Pressable>
+        )}
+
+        {isAdding && (
+          <View className="mt-6 flex flex-row items-center">
+            <TextInput
+              value={newTaskLabel}
+              onChangeText={setNewTaskLabel}
+              placeholder="Enter task"
+              onSubmitEditing={addTask}
+              autoFocus
+              className="px-4 py-2 border border-gray-400 rounded-lg w-[80%]"
+              style={{ color: "white" }}
+            />
+            <Pressable onPress={addTask} className="ml-4 bg-green-500 px-6 py-2 rounded-lg">
+              <Text className="text-white">Save</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     </TouchableWithoutFeedback>
   );
