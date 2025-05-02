@@ -25,6 +25,7 @@ type Task = {
 export default function HomeScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingCategory, setEditingCategory] = useState<string>("General");
   const [newTaskLabel, setNewTaskLabel] = useState<string>("");
   const [newTaskCategory, setNewTaskCategory] = useState<string>("General");
   const [isAdding, setIsAdding] = useState(false);
@@ -74,7 +75,12 @@ export default function HomeScreen() {
     const newId = Date.now();
     setTasks((prev) => [
       ...prev,
-      { id: newId, label: newTaskLabel, checked: false, category: newTaskCategory },
+      {
+        id: newId,
+        label: newTaskLabel,
+        checked: false,
+        category: newTaskCategory,
+      },
     ]);
     setNewTaskLabel("");
     setNewTaskCategory("General");
@@ -100,7 +106,10 @@ export default function HomeScreen() {
       [
         {
           text: "Edit",
-          onPress: () => setEditingId(item.id),
+          onPress: () => {
+            setEditingId(item.id);
+            setEditingCategory(item.category);
+          },
         },
         {
           text: "Delete",
@@ -118,12 +127,6 @@ export default function HomeScreen() {
 
   const renderRightActions = (item: Task) => (
     <View className="flex flex-row h-full">
-      <Pressable
-        onPress={() => setEditingId(item.id)}
-        className="bg-yellow-500 justify-center px-4"
-      >
-        <Text className="text-white font-bold">Edit</Text>
-      </Pressable>
       <Pressable
         onPress={() => deleteTask(item.id)}
         className="bg-red-600 justify-center px-4"
@@ -150,7 +153,7 @@ export default function HomeScreen() {
               },
             ],
           }}
-          className="mb-1 border-b border-gray-400 w-full px-4"
+          className="mb-3 border-b border-gray-400 w-full px-4"
         >
           <View
             className={`flex flex-row items-center py-3 rounded-lg ${
@@ -168,28 +171,66 @@ export default function HomeScreen() {
 
             <View className="flex-1">
               {editingId === item.id ? (
-                <TextInput
-                  value={item.label}
-                  onChangeText={(text) => updateTaskLabel(item.id, text)}
-                  onBlur={() => setEditingId(null)}
-                  autoFocus
-                  className="text-black px-2 py-1 rounded-lg border bg-white"
-                  style={{ color: "black" }}
-                />
-              ) : (
-                <Pressable
-                  onPress={() => setEditingId(item.id)}
-                  onLongPress={() => handleTaskLongPress(item)}
-                >
-                  <Text
-                    className={`${
-                      item.checked ? "text-gray-400 line-through" : "text-foreground"
-                    }`}
+                <View>
+                  <TextInput
+                    value={item.label}
+                    onChangeText={(text) => updateTaskLabel(item.id, text)}
+                    autoFocus
+                    className="text-black px-2 py-1 rounded-lg border bg-white mb-2"
+                    style={{ color: "black" }}
+                  />
+                  <View className="bg-white rounded-lg">
+                    <Picker
+                      selectedValue={editingCategory}
+                      onValueChange={(value) => setEditingCategory(value)}
+                      style={{ color: "black" }}
+                    >
+                      <Picker.Item label="General" value="General" />
+                      <Picker.Item label="Work" value="Work" />
+                      <Picker.Item label="Personal" value="Personal" />
+                      <Picker.Item label="Urgent" value="Urgent" />
+                    </Picker>
+                  </View>
+                  <Pressable
+                    onPress={() => {
+                      setTasks((prev) =>
+                        prev.map((task) =>
+                          task.id === item.id
+                            ? { ...task, category: editingCategory }
+                            : task
+                        )
+                      );
+                      setEditingId(null);
+                    }}
+                    className="mt-2 bg-blue-500 px-4 py-2 rounded-lg"
                   >
-                    {item.label}
-                  </Text>
-                  <Text className="text-sm text-gray-500">{item.category}</Text>
-                </Pressable>
+                    <Text className="text-white text-center">Save</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <>
+                  <Pressable onLongPress={() => handleTaskLongPress(item)}>
+                    <Text
+                      className={`${
+                        item.checked
+                          ? "text-gray-400 line-through"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {item.label}
+                    </Text>
+                    <Text className="text-sm text-gray-500">{item.category}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      setEditingId(item.id);
+                      setEditingCategory(item.category);
+                    }}
+                    className="mt-2 bg-blue-500 px-4 py-2 rounded-lg self-start"
+                  >
+                    <Text className="text-white text-center">Edit</Text>
+                  </Pressable>
+                </>
               )}
             </View>
           </View>
@@ -217,7 +258,7 @@ export default function HomeScreen() {
         {!isAdding && (
           <Pressable
             onPress={() => setIsAdding(true)}
-            className="mt-6 bg-blue-500 px-6 py-3 rounded-lg"
+            className="mt-6 bg-red-900 px-6 py-3 rounded-lg"
           >
             <Text className="text-white font-semibold">+ Add Task</Text>
           </Pressable>
@@ -233,12 +274,12 @@ export default function HomeScreen() {
               autoFocus
               className="px-4 py-2 border border-gray-400 rounded-lg mb-2"
               style={{ color: "white" }}
+              placeholderTextColor="gray"
             />
-
             <View className="bg-white rounded-lg mb-2">
               <Picker
                 selectedValue={newTaskCategory}
-                onValueChange={(itemValue) => setNewTaskCategory(itemValue)}
+                onValueChange={(value) => setNewTaskCategory(value)}
                 style={{ color: "black" }}
               >
                 <Picker.Item label="General" value="General" />
@@ -247,12 +288,11 @@ export default function HomeScreen() {
                 <Picker.Item label="Urgent" value="Urgent" />
               </Picker>
             </View>
-
             <Pressable
               onPress={addTask}
               className="bg-green-500 px-6 py-2 rounded-lg"
             >
-              <Text className="text-white text-center">Save</Text>
+              <Text className="text-white text-center">Save Task</Text>
             </Pressable>
           </View>
         )}
