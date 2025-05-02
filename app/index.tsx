@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Swipeable } from "react-native-gesture-handler";
+import { Picker } from "@react-native-picker/picker";
 
 type Task = {
   id: number;
@@ -25,6 +26,7 @@ export default function HomeScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [newTaskLabel, setNewTaskLabel] = useState<string>("");
+  const [newTaskCategory, setNewTaskCategory] = useState<string>("General");
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
@@ -72,9 +74,10 @@ export default function HomeScreen() {
     const newId = Date.now();
     setTasks((prev) => [
       ...prev,
-      { id: newId, label: newTaskLabel, checked: false, category: "General" },
+      { id: newId, label: newTaskLabel, checked: false, category: newTaskCategory },
     ]);
     setNewTaskLabel("");
+    setNewTaskCategory("General");
     setIsAdding(false);
   };
 
@@ -221,18 +224,35 @@ export default function HomeScreen() {
         )}
 
         {isAdding && (
-          <View className="mt-6 flex flex-row items-center">
+          <View className="mt-6 w-[90%]">
             <TextInput
               value={newTaskLabel}
               onChangeText={setNewTaskLabel}
               placeholder="Enter task"
               onSubmitEditing={addTask}
               autoFocus
-              className="px-4 py-2 border border-gray-400 rounded-lg w-[80%]"
+              className="px-4 py-2 border border-gray-400 rounded-lg mb-2"
               style={{ color: "white" }}
             />
-            <Pressable onPress={addTask} className="ml-4 bg-green-500 px-6 py-2 rounded-lg">
-              <Text className="text-white">Save</Text>
+
+            <View className="bg-white rounded-lg mb-2">
+              <Picker
+                selectedValue={newTaskCategory}
+                onValueChange={(itemValue) => setNewTaskCategory(itemValue)}
+                style={{ color: "black" }}
+              >
+                <Picker.Item label="General" value="General" />
+                <Picker.Item label="Work" value="Work" />
+                <Picker.Item label="Personal" value="Personal" />
+                <Picker.Item label="Urgent" value="Urgent" />
+              </Picker>
+            </View>
+
+            <Pressable
+              onPress={addTask}
+              className="bg-green-500 px-6 py-2 rounded-lg"
+            >
+              <Text className="text-white text-center">Save</Text>
             </Pressable>
           </View>
         )}
