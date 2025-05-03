@@ -29,6 +29,8 @@ export default function HomeScreen() {
   const [newTaskLabel, setNewTaskLabel] = useState<string>("");
   const [newTaskCategory, setNewTaskCategory] = useState<string>("General");
   const [isAdding, setIsAdding] = useState(false);
+  const [lastDeletedTask, setLastDeletedTask] = useState<Task | null>(null);
+  const [showUndo, setShowUndo] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -96,7 +98,18 @@ export default function HomeScreen() {
   };
 
   const deleteTask = (id: number) => {
+    const deleted = tasks.find((task) => task.id === id);
+    if (!deleted) return;
+
+    setLastDeletedTask(deleted);
     setTasks((prev) => prev.filter((task) => task.id !== id));
+    setShowUndo(true);
+
+    // Hide undo after 5 seconds
+    setTimeout(() => {
+      setShowUndo(false);
+      setLastDeletedTask(null);
+    }, 5000);
   };
 
   const handleTaskLongPress = (item: Task) => {
@@ -242,7 +255,7 @@ export default function HomeScreen() {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View className="flex flex-1 py-16 bg-background items-center">
-        <Text className="text-4xl font-bold text-foreground mb-8">Hall Pass</Text>
+        <Text className="text-6xl font-bold text-foreground mb-8">Hall Pass</Text>
 
         {tasks.length === 0 ? (
           <Text className="text-lg text-gray-500">Please create a task!</Text>
@@ -293,6 +306,23 @@ export default function HomeScreen() {
               className="bg-green-500 px-6 py-2 rounded-lg"
             >
               <Text className="text-white text-center">Save Task</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Undo Snackbar */}
+        {showUndo && lastDeletedTask && (
+          <View className="absolute bottom-4 left-4 right-4 bg-gray-800 px-4 py-3 rounded-lg flex-row justify-between items-center">
+            <Text className="text-white flex-1">Task deleted</Text>
+            <Pressable
+              onPress={() => {
+                setTasks((prev) => [...prev, lastDeletedTask]);
+                setShowUndo(false);
+                setLastDeletedTask(null);
+              }}
+              className="ml-4"
+            >
+              <Text className="text-blue-400 font-bold">UNDO</Text>
             </Pressable>
           </View>
         )}
