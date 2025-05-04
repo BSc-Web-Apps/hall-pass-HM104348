@@ -15,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Swipeable } from "react-native-gesture-handler";
 import { Picker } from "@react-native-picker/picker";
 
+// Define the Task type
 type Task = {
   id: number;
   label: string;
@@ -104,6 +105,17 @@ export default function HomeScreen() {
     );
   };
 
+  const saveEdit = (id: number) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === id
+          ? { ...task, category: editingCategory, priority: editingPriority }
+          : task
+      )
+    );
+    setEditingId(null);
+  };
+
   const deleteTask = (id: number) => {
     const deleted = tasks.find((task) => task.id === id);
     if (!deleted) return;
@@ -127,8 +139,8 @@ export default function HomeScreen() {
           text: "Edit",
           onPress: () => {
             setEditingId(item.id);
-            setEditingCategory(item.category || "General");
-            setEditingPriority(item.priority || "Low");
+            setEditingCategory(item.category);
+            setEditingPriority(item.priority);
           },
         },
         {
@@ -136,10 +148,7 @@ export default function HomeScreen() {
           style: "destructive",
           onPress: () => deleteTask(item.id),
         },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Cancel", style: "cancel" },
       ],
       { cancelable: true }
     );
@@ -162,9 +171,26 @@ export default function HomeScreen() {
       (categoryFilter === "All" || task.category === categoryFilter)
   );
 
-  const renderPickerContainer = (children: React.ReactNode) => (
-    <View className="bg-white rounded-lg border border-black mb-2">
-      {children}
+  const renderPickerContainer = <T extends string>( 
+    selectedValue: T, 
+    onValueChange: (value: T) => void, 
+    items: { label: string; value: T }[] 
+  ) => (
+    <View className="rounded-lg border border-white mb-2 w-40 overflow-hidden">
+      <Picker
+        selectedValue={selectedValue}
+        onValueChange={onValueChange}
+        style={{
+          backgroundColor: 'black',
+          color: 'white',
+          width: '100%',
+        }}
+        dropdownIconColor="white"
+      >
+        {items.map(({ label, value }) => (
+          <Picker.Item key={value} label={label} value={value} />
+        ))}
+      </Picker>
     </View>
   );
 
@@ -192,14 +218,16 @@ export default function HomeScreen() {
               item.checked ? "bg-gray-700" : "bg-transparent"
             }`}
           >
-            <Pressable
-              onPress={() => toggleTask(item.id)}
-              className={`w-6 h-6 border-2 border-white mr-4 items-center justify-center ${
-                item.checked ? "bg-blue-500" : "bg-transparent"
-              }`}
-            >
-              {item.checked && <Text className="text-white text-xs">✓</Text>}
-            </Pressable>
+            {editingId !== item.id && (
+              <Pressable
+                onPress={() => toggleTask(item.id)}
+                className={`w-6 h-6 border-2 border-white mr-4 items-center justify-center ${
+                  item.checked ? "bg-blue-500" : "bg-transparent"
+                }`}
+              >
+                {item.checked && <Text className="text-white text-xs">✓</Text>}
+              </Pressable>
+            )}
 
             <View className="flex-1">
               {editingId === item.id ? (
@@ -211,72 +239,55 @@ export default function HomeScreen() {
                     className="text-black px-2 py-1 rounded-lg border bg-white mb-2"
                     style={{ color: "black" }}
                   />
-                  {renderPickerContainer(
-                    <>
-                      <Picker
-                        selectedValue={editingCategory ?? "General"}
-                        onValueChange={(value) => setEditingCategory(value)}
-                        style={{ color: "black" }}
-                      >
-                        <Picker.Item label="General" value="General" />
-                        <Picker.Item label="Work" value="Work" />
-                        <Picker.Item label="Personal" value="Personal" />
-                        <Picker.Item label="Urgent" value="Urgent" />
-                      </Picker>
-                      <Picker
-                        selectedValue={editingPriority ?? "Low"}
-                        onValueChange={(value) => setEditingPriority(value)}
-                        style={{ color: "black" }}
-                      >
-                        <Picker.Item label="Low" value="Low" />
-                        <Picker.Item label="Medium" value="Medium" />
-                        <Picker.Item label="High" value="High" />
-                      </Picker>
-                    </>
-                  )}
+                  {renderPickerContainer(editingCategory, setEditingCategory, [
+                    { label: "General", value: "General" },
+                    { label: "Work", value: "Work" },
+                    { label: "Personal", value: "Personal" },
+                    { label: "Urgent", value: "Urgent" },
+                  ])}
+                  {renderPickerContainer(editingPriority, setEditingPriority, [
+                    { label: "Low", value: "Low" },
+                    { label: "Medium", value: "Medium" },
+                    { label: "High", value: "High" },
+                  ])}
                   <Pressable
-                    onPress={() => {
-                      setTasks((prev) =>
-                        prev.map((task) =>
-                          task.id === item.id
-                            ? { ...task, category: editingCategory, priority: editingPriority }
-                            : task
-                        )
-                      );
-                      setEditingId(null);
-                    }}
+                    onPress={() => saveEdit(item.id)}
                     className="mt-2 bg-blue-500 px-4 py-2 rounded-lg"
                   >
                     <Text className="text-white text-center">Save</Text>
                   </Pressable>
+                  <Pressable
+                    onPress={() => setEditingId(null)}
+                    className="mt-2 bg-gray-500 px-4 py-2 rounded-lg"
+                  >
+                    <Text className="text-white text-center">Cancel</Text>
+                  </Pressable>
                 </View>
               ) : (
-                <>
-                  <Pressable onLongPress={() => handleTaskLongPress(item)}>
-                    <Text
-                      className={`${
-        item.checked
-          ? "text-gray-400 line-through"
-          : "text-foreground"
-      }`}
-                    >
-                      {item.label}
-                    </Text>
-                    <Text className="text-sm text-gray-500">
-                      {item.category} | Priority: {item.priority}
-                    </Text>
-                  </Pressable>
+                <Pressable onLongPress={() => handleTaskLongPress(item)}>
+                  <Text
+                    className={`${
+                      item.checked
+                        ? "text-gray-400 line-through"
+                        : "text-white"
+                    }`}
+                  >
+                    {item.label}
+                  </Text>
+                  <Text className="text-sm text-gray-400">
+                    {item.category} | Priority: {item.priority}
+                  </Text>
                   <Pressable
                     onPress={() => {
                       setEditingId(item.id);
-                      setEditingCategory(item.category || "General");
-                      setEditingPriority(item.priority || "Low");
+                      setEditingCategory(item.category);
+                      setEditingPriority(item.priority);
                     }}
-                    className="mt-2 bg-blue-500 px-4 py-2 rounded-lg self-start"
+                    className="mt-2 bg-blue-500 px-4 py-1 rounded-lg w-24"
                   >
-                    <Text className="text-white text-center">Edit</Text>
+                    <Text className="text-white text-center text-sm">Edit</Text>
                   </Pressable>
-                </>
+                </Pressable>
               )}
             </View>
           </View>
@@ -287,43 +298,33 @@ export default function HomeScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View className="flex flex-1 py-16 bg-background items-center">
-        <Text className="text-6xl font-bold text-foreground mb-8">Hall Pass</Text>
+      <View className="flex-1 py-16 bg-background items-center px-6">
+        <Text className="text-6xl font-bold mb-4 text-white text-center">Hall Pass</Text>
 
-        {renderPickerContainer(
-          <Picker
-            selectedValue={priorityFilter}
-            onValueChange={(value) => setPriorityFilter(value)}
-            style={{ color: "black" }}
-          >
-            <Picker.Item label="All Priorities" value="All" />
-            <Picker.Item label="Low" value="Low" />
-            <Picker.Item label="Medium" value="Medium" />
-            <Picker.Item label="High" value="High" />
-          </Picker>
-        )}
+        {renderPickerContainer(priorityFilter, setPriorityFilter, [
+          { label: "All Priorities", value: "All" },
+          { label: "Low", value: "Low" },
+          { label: "Medium", value: "Medium" },
+          { label: "High", value: "High" },
+        ])}
 
-        {renderPickerContainer(
-          <Picker
-            selectedValue={categoryFilter}
-            onValueChange={(value) => setCategoryFilter(value)}
-            style={{ color: "black" }}
-          >
-            <Picker.Item label="All Categories" value="All" />
-            <Picker.Item label="General" value="General" />
-            <Picker.Item label="Work" value="Work" />
-            <Picker.Item label="Personal" value="Personal" />
-            <Picker.Item label="Urgent" value="Urgent" />
-          </Picker>
-        )}
+        {renderPickerContainer(categoryFilter, setCategoryFilter, [
+          { label: "All Categories", value: "All" },
+          { label: "General", value: "General" },
+          { label: "Work", value: "Work" },
+          { label: "Personal", value: "Personal" },
+          { label: "Urgent", value: "Urgent" },
+        ])}
 
         {filteredTasks.length === 0 ? (
-          <Text className="text-lg text-gray-500">No tasks to display.</Text>
+          <View className="flex-1 justify-center items-center">
+            <Text className="text-lg text-gray-500 mt-4 text-center">No tasks to display.</Text>
+          </View>
         ) : (
           <FlatList
             data={filteredTasks}
             keyExtractor={(item) => item.id.toString()}
-            className="w-[90%]"
+            className="w-full mt-4"
             renderItem={({ item }) => renderTask(item)}
           />
         )}
@@ -331,14 +332,14 @@ export default function HomeScreen() {
         {!isAdding && (
           <Pressable
             onPress={() => setIsAdding(true)}
-            className="mt-6 bg-red-900 px-6 py-3 rounded-lg"
+            className="mt-6 bg-red-900 px-6 py-3 rounded-lg self-center"
           >
             <Text className="text-white font-semibold">+ Add Task</Text>
           </Pressable>
         )}
 
         {isAdding && (
-          <View className="mt-6 w-[90%]">
+          <View className="mt-6 w-full">
             <TextInput
               value={newTaskLabel}
               onChangeText={setNewTaskLabel}
@@ -349,32 +350,20 @@ export default function HomeScreen() {
               style={{ color: "white" }}
               placeholderTextColor="gray"
             />
-            {renderPickerContainer(
-              <>
-                <Picker
-                  selectedValue={newTaskCategory}
-                  onValueChange={(value) => setNewTaskCategory(value)}
-                  style={{ color: "black" }}
-                >
-                  <Picker.Item label="General" value="General" />
-                  <Picker.Item label="Work" value="Work" />
-                  <Picker.Item label="Personal" value="Personal" />
-                  <Picker.Item label="Urgent" value="Urgent" />
-                </Picker>
-                <Picker
-                  selectedValue={newTaskPriority}
-                  onValueChange={(value) => setNewTaskPriority(value)}
-                  style={{ color: "black" }}
-                >
-                  <Picker.Item label="Low" value="Low" />
-                  <Picker.Item label="Medium" value="Medium" />
-                  <Picker.Item label="High" value="High" />
-                </Picker>
-              </>
-            )}
+            {renderPickerContainer(newTaskCategory, setNewTaskCategory, [
+              { label: "General", value: "General" },
+              { label: "Work", value: "Work" },
+              { label: "Personal", value: "Personal" },
+              { label: "Urgent", value: "Urgent" },
+            ])}
+            {renderPickerContainer(newTaskPriority, setNewTaskPriority, [
+              { label: "Low", value: "Low" },
+              { label: "Medium", value: "Medium" },
+              { label: "High", value: "High" },
+            ])}
             <Pressable
               onPress={addTask}
-              className="bg-green-500 px-6 py-2 rounded-lg"
+              className="bg-green-500 px-6 py-2 rounded-lg mt-2"
             >
               <Text className="text-white text-center">Save Task</Text>
             </Pressable>
