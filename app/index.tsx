@@ -20,14 +20,19 @@ type Task = {
   label: string;
   checked: boolean;
   category: string;
+  priority: "Low" | "Medium" | "High";
 };
 
 export default function HomeScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingCategory, setEditingCategory] = useState<string>("General");
+  const [editingPriority, setEditingPriority] = useState<"Low" | "Medium" | "High">("Low");
   const [newTaskLabel, setNewTaskLabel] = useState<string>("");
   const [newTaskCategory, setNewTaskCategory] = useState<string>("General");
+  const [newTaskPriority, setNewTaskPriority] = useState<"Low" | "Medium" | "High">("Low");
+  const [priorityFilter, setPriorityFilter] = useState<"All" | "Low" | "Medium" | "High">("All");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [isAdding, setIsAdding] = useState(false);
   const [lastDeletedTask, setLastDeletedTask] = useState<Task | null>(null);
   const [showUndo, setShowUndo] = useState(false);
@@ -82,10 +87,12 @@ export default function HomeScreen() {
         label: newTaskLabel,
         checked: false,
         category: newTaskCategory,
+        priority: newTaskPriority,
       },
     ]);
     setNewTaskLabel("");
     setNewTaskCategory("General");
+    setNewTaskPriority("Low");
     setIsAdding(false);
   };
 
@@ -105,7 +112,6 @@ export default function HomeScreen() {
     setTasks((prev) => prev.filter((task) => task.id !== id));
     setShowUndo(true);
 
-    // Hide undo after 5 seconds
     setTimeout(() => {
       setShowUndo(false);
       setLastDeletedTask(null);
@@ -121,7 +127,8 @@ export default function HomeScreen() {
           text: "Edit",
           onPress: () => {
             setEditingId(item.id);
-            setEditingCategory(item.category);
+            setEditingCategory(item.category || "General");
+            setEditingPriority(item.priority || "Low");
           },
         },
         {
@@ -146,6 +153,18 @@ export default function HomeScreen() {
       >
         <Text className="text-white font-bold">Delete</Text>
       </Pressable>
+    </View>
+  );
+
+  const filteredTasks = tasks.filter(
+    (task) =>
+      (priorityFilter === "All" || task.priority === priorityFilter) &&
+      (categoryFilter === "All" || task.category === categoryFilter)
+  );
+
+  const renderPickerContainer = (children: React.ReactNode) => (
+    <View className="bg-white rounded-lg border border-black mb-2">
+      {children}
     </View>
   );
 
@@ -192,24 +211,35 @@ export default function HomeScreen() {
                     className="text-black px-2 py-1 rounded-lg border bg-white mb-2"
                     style={{ color: "black" }}
                   />
-                  <View className="bg-white rounded-lg">
-                    <Picker
-                      selectedValue={editingCategory}
-                      onValueChange={(value) => setEditingCategory(value)}
-                      style={{ color: "black" }}
-                    >
-                      <Picker.Item label="General" value="General" />
-                      <Picker.Item label="Work" value="Work" />
-                      <Picker.Item label="Personal" value="Personal" />
-                      <Picker.Item label="Urgent" value="Urgent" />
-                    </Picker>
-                  </View>
+                  {renderPickerContainer(
+                    <>
+                      <Picker
+                        selectedValue={editingCategory ?? "General"}
+                        onValueChange={(value) => setEditingCategory(value)}
+                        style={{ color: "black" }}
+                      >
+                        <Picker.Item label="General" value="General" />
+                        <Picker.Item label="Work" value="Work" />
+                        <Picker.Item label="Personal" value="Personal" />
+                        <Picker.Item label="Urgent" value="Urgent" />
+                      </Picker>
+                      <Picker
+                        selectedValue={editingPriority ?? "Low"}
+                        onValueChange={(value) => setEditingPriority(value)}
+                        style={{ color: "black" }}
+                      >
+                        <Picker.Item label="Low" value="Low" />
+                        <Picker.Item label="Medium" value="Medium" />
+                        <Picker.Item label="High" value="High" />
+                      </Picker>
+                    </>
+                  )}
                   <Pressable
                     onPress={() => {
                       setTasks((prev) =>
                         prev.map((task) =>
                           task.id === item.id
-                            ? { ...task, category: editingCategory }
+                            ? { ...task, category: editingCategory, priority: editingPriority }
                             : task
                         )
                       );
@@ -225,19 +255,22 @@ export default function HomeScreen() {
                   <Pressable onLongPress={() => handleTaskLongPress(item)}>
                     <Text
                       className={`${
-                        item.checked
-                          ? "text-gray-400 line-through"
-                          : "text-foreground"
-                      }`}
+        item.checked
+          ? "text-gray-400 line-through"
+          : "text-foreground"
+      }`}
                     >
                       {item.label}
                     </Text>
-                    <Text className="text-sm text-gray-500">{item.category}</Text>
+                    <Text className="text-sm text-gray-500">
+                      {item.category} | Priority: {item.priority}
+                    </Text>
                   </Pressable>
                   <Pressable
                     onPress={() => {
                       setEditingId(item.id);
-                      setEditingCategory(item.category);
+                      setEditingCategory(item.category || "General");
+                      setEditingPriority(item.priority || "Low");
                     }}
                     className="mt-2 bg-blue-500 px-4 py-2 rounded-lg self-start"
                   >
@@ -257,11 +290,38 @@ export default function HomeScreen() {
       <View className="flex flex-1 py-16 bg-background items-center">
         <Text className="text-6xl font-bold text-foreground mb-8">Hall Pass</Text>
 
-        {tasks.length === 0 ? (
-          <Text className="text-lg text-gray-500">Please create a task!</Text>
+        {renderPickerContainer(
+          <Picker
+            selectedValue={priorityFilter}
+            onValueChange={(value) => setPriorityFilter(value)}
+            style={{ color: "black" }}
+          >
+            <Picker.Item label="All Priorities" value="All" />
+            <Picker.Item label="Low" value="Low" />
+            <Picker.Item label="Medium" value="Medium" />
+            <Picker.Item label="High" value="High" />
+          </Picker>
+        )}
+
+        {renderPickerContainer(
+          <Picker
+            selectedValue={categoryFilter}
+            onValueChange={(value) => setCategoryFilter(value)}
+            style={{ color: "black" }}
+          >
+            <Picker.Item label="All Categories" value="All" />
+            <Picker.Item label="General" value="General" />
+            <Picker.Item label="Work" value="Work" />
+            <Picker.Item label="Personal" value="Personal" />
+            <Picker.Item label="Urgent" value="Urgent" />
+          </Picker>
+        )}
+
+        {filteredTasks.length === 0 ? (
+          <Text className="text-lg text-gray-500">No tasks to display.</Text>
         ) : (
           <FlatList
-            data={tasks}
+            data={filteredTasks}
             keyExtractor={(item) => item.id.toString()}
             className="w-[90%]"
             renderItem={({ item }) => renderTask(item)}
@@ -289,18 +349,29 @@ export default function HomeScreen() {
               style={{ color: "white" }}
               placeholderTextColor="gray"
             />
-            <View className="bg-white rounded-lg mb-2">
-              <Picker
-                selectedValue={newTaskCategory}
-                onValueChange={(value) => setNewTaskCategory(value)}
-                style={{ color: "black" }}
-              >
-                <Picker.Item label="General" value="General" />
-                <Picker.Item label="Work" value="Work" />
-                <Picker.Item label="Personal" value="Personal" />
-                <Picker.Item label="Urgent" value="Urgent" />
-              </Picker>
-            </View>
+            {renderPickerContainer(
+              <>
+                <Picker
+                  selectedValue={newTaskCategory}
+                  onValueChange={(value) => setNewTaskCategory(value)}
+                  style={{ color: "black" }}
+                >
+                  <Picker.Item label="General" value="General" />
+                  <Picker.Item label="Work" value="Work" />
+                  <Picker.Item label="Personal" value="Personal" />
+                  <Picker.Item label="Urgent" value="Urgent" />
+                </Picker>
+                <Picker
+                  selectedValue={newTaskPriority}
+                  onValueChange={(value) => setNewTaskPriority(value)}
+                  style={{ color: "black" }}
+                >
+                  <Picker.Item label="Low" value="Low" />
+                  <Picker.Item label="Medium" value="Medium" />
+                  <Picker.Item label="High" value="High" />
+                </Picker>
+              </>
+            )}
             <Pressable
               onPress={addTask}
               className="bg-green-500 px-6 py-2 rounded-lg"
@@ -310,7 +381,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Undo Snackbar */}
         {showUndo && lastDeletedTask && (
           <View className="absolute bottom-4 left-4 right-4 bg-gray-800 px-4 py-3 rounded-lg flex-row justify-between items-center">
             <Text className="text-white flex-1">Task deleted</Text>
