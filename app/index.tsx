@@ -14,6 +14,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Swipeable } from "react-native-gesture-handler";
 import { Picker } from "@react-native-picker/picker";
+import { CircleCheck } from "lucide-react-native";
 
 // Define the Task type
 type Task = {
@@ -21,17 +22,17 @@ type Task = {
   label: string;
   checked: boolean;
   category: string;
-  priority: "Low" | "Medium" | "High";
+  priority: "Low" | "Medium" | "High" |"Urgent";
 };
 
 export default function HomeScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingCategory, setEditingCategory] = useState<string>("General");
-  const [editingPriority, setEditingPriority] = useState<"Low" | "Medium" | "High">("Low");
+  const [editingPriority, setEditingPriority] = useState<"Low" | "Medium" | "High" | "Urgent">("Low");
   const [newTaskLabel, setNewTaskLabel] = useState<string>("");
   const [newTaskCategory, setNewTaskCategory] = useState<string>("General");
-  const [newTaskPriority, setNewTaskPriority] = useState<"Low" | "Medium" | "High">("Low");
+  const [newTaskPriority, setNewTaskPriority] = useState<"Low" | "Medium" | "High" | "Urgent">("Low");
   const [priorityFilter, setPriorityFilter] = useState<"All" | "Low" | "Medium" | "High">("All");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [isAdding, setIsAdding] = useState(false);
@@ -299,22 +300,33 @@ export default function HomeScreen() {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View className="flex-1 py-16 bg-background items-center px-6">
-        <Text className="text-6xl font-bold mb-4 text-white text-center">Hall Pass</Text>
+        <View className="flex flex-row gap-5">
+          <Text className="text-6xl font-bold mb-4 text-white text-center">HallPass</Text>
+          <CircleCheck size={60} color="#614E48"  />
 
-        {renderPickerContainer(priorityFilter, setPriorityFilter, [
-          { label: "All Priorities", value: "All" },
-          { label: "Low", value: "Low" },
-          { label: "Medium", value: "Medium" },
-          { label: "High", value: "High" },
-        ])}
 
-        {renderPickerContainer(categoryFilter, setCategoryFilter, [
-          { label: "All Categories", value: "All" },
-          { label: "General", value: "General" },
-          { label: "Work", value: "Work" },
-          { label: "Personal", value: "Personal" },
-          { label: "Urgent", value: "Urgent" },
-        ])}
+
+        </View>
+
+        {filteredTasks.length > 0 && (
+  <>
+    {renderPickerContainer(priorityFilter, setPriorityFilter, [
+      { label: "All Priorities", value: "All" },
+      { label: "Low", value: "Low" },
+      { label: "Medium", value: "Medium" },
+      { label: "High", value: "High" },
+    ])}
+
+    {renderPickerContainer(categoryFilter, setCategoryFilter, [
+      { label: "All Categories", value: "All" },
+      { label: "General", value: "General" },
+      { label: "Work", value: "Work" },
+      { label: "Personal", value: "Personal" },
+      { label: "Urgent", value: "Urgent" },
+    ])}
+  </>
+)}
+
 
         {filteredTasks.length === 0 ? (
           <View className="flex-1 justify-center items-center">
@@ -354,13 +366,15 @@ export default function HomeScreen() {
               { label: "General", value: "General" },
               { label: "Work", value: "Work" },
               { label: "Personal", value: "Personal" },
-              { label: "Urgent", value: "Urgent" },
+              
             ])}
             {renderPickerContainer(newTaskPriority, setNewTaskPriority, [
               { label: "Low", value: "Low" },
               { label: "Medium", value: "Medium" },
               { label: "High", value: "High" },
+              { label: "Urgent", value: "Urgent" },
             ])}
+
             <Pressable
               onPress={addTask}
               className="bg-green-500 px-6 py-2 rounded-lg mt-2"
