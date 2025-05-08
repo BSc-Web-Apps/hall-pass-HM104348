@@ -414,6 +414,7 @@ export default function HomeScreen() {
           </Animated.View>
         )}
       </KeyboardAvoidingView>
+    
     </TouchableWithoutFeedback>
   );
 }
