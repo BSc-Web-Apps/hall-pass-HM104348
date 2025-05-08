@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import 'react-native-gesture-handler';
 import {
   Text,
@@ -22,7 +22,69 @@ type Task = {
   label: string;
   checked: boolean;
   category: string;
-  priority: "Low" | "Medium" | "High" |"Urgent";
+  priority: "Low" | "Medium" | "High" | "Urgent";
+};
+
+// TaskItem component for rendering each task
+const TaskItem = ({ item, onDelete, onToggle, onLongPress, onEdit }: {
+  item: Task;
+  onDelete: (id: number) => void;
+  onToggle: (id: number) => void;
+  onLongPress: (item: Task) => void;
+  onEdit: (item: Task) => void;
+}) => {
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const renderRightActions = () => (
+    <View className="flex flex-row h-full">
+      <Pressable
+        onPress={() => {
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => onDelete(item.id));
+        }}
+        className="bg-red-600 justify-center px-4"
+      >
+        <Text className="text-white font-bold">Delete</Text>
+      </Pressable>
+    </View>
+  );
+
+  return (
+    <Swipeable renderRightActions={renderRightActions}>
+      <Animated.View
+        style={{
+          opacity: fadeAnim,
+          transform: [
+            {
+              scale: fadeAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.95, 1],
+              }),
+            },
+          ],
+        }}
+        className="mb-3 border-b border-gray-400 w-full px-4"
+      >
+        <Pressable onLongPress={() => onLongPress(item)} className="py-3">
+          <Text className={`text-white ${item.checked ? "line-through text-gray-400" : ""}`}>
+            {item.label}
+          </Text>
+          <Text className="text-sm text-gray-400">
+            {item.category} | Priority: {item.priority}
+          </Text>
+          <Pressable
+            onPress={() => onEdit(item)}
+            className="mt-2 bg-blue-500 px-4 py-1 rounded-lg w-24"
+          >
+            <Text className="text-white text-center text-sm">Edit</Text>
+          </Pressable>
+        </Pressable>
+      </Animated.View>
+    </Swipeable>
+  );
 };
 
 export default function HomeScreen() {
@@ -38,6 +100,7 @@ export default function HomeScreen() {
   const [isAdding, setIsAdding] = useState(false);
   const [lastDeletedTask, setLastDeletedTask] = useState<Task | null>(null);
   const [showUndo, setShowUndo] = useState(false);
+  const fadeAnimUndo = useRef(new Animated.Value(0)).current; // Animation for Undo button
 
   useEffect(() => {
     (async () => {
@@ -125,10 +188,24 @@ export default function HomeScreen() {
     setTasks((prev) => prev.filter((task) => task.id !== id));
     setShowUndo(true);
 
+    // Trigger the fade-in animation for Undo button
+    Animated.timing(fadeAnimUndo, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
     setTimeout(() => {
       setShowUndo(false);
       setLastDeletedTask(null);
-    }, 5000);
+
+      // Fade-out animation after 5 seconds
+      Animated.timing(fadeAnimUndo, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+    }, 5000); // Undo button fades out after 5 seconds
   };
 
   const handleTaskLongPress = (item: Task) => {
@@ -154,17 +231,6 @@ export default function HomeScreen() {
       { cancelable: true }
     );
   };
-
-  const renderRightActions = (item: Task) => (
-    <View className="flex flex-row h-full">
-      <Pressable
-        onPress={() => deleteTask(item.id)}
-        className="bg-red-600 justify-center px-4"
-      >
-        <Text className="text-white font-bold">Delete</Text>
-      </Pressable>
-    </View>
-  );
 
   const filteredTasks = tasks.filter(
     (task) =>
@@ -195,138 +261,32 @@ export default function HomeScreen() {
     </View>
   );
 
-  const renderTask = (item: Task) => {
-    const fadeAnim = new Animated.Value(1);
-
-    return (
-      <Swipeable renderRightActions={() => renderRightActions(item)}>
-        <Animated.View
-          style={{
-            opacity: fadeAnim,
-            transform: [
-              {
-                scale: fadeAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.95, 1],
-                }),
-              },
-            ],
-          }}
-          className="mb-3 border-b border-gray-400 w-full px-4"
-        >
-          <View
-            className={`flex flex-row items-center py-3 rounded-lg ${
-              item.checked ? "bg-gray-700" : "bg-transparent"
-            }`}
-          >
-            {editingId !== item.id && (
-              <Pressable
-                onPress={() => toggleTask(item.id)}
-                className={`w-6 h-6 border-2 border-white mr-4 items-center justify-center ${
-                  item.checked ? "bg-blue-500" : "bg-transparent"
-                }`}
-              >
-                {item.checked && <Text className="text-white text-xs">✓</Text>}
-              </Pressable>
-            )}
-
-            <View className="flex-1">
-              {editingId === item.id ? (
-                <View>
-                  <TextInput
-                    value={item.label}
-                    onChangeText={(text) => updateTaskLabel(item.id, text)}
-                    autoFocus
-                    className="text-black px-2 py-1 rounded-lg border bg-white mb-2"
-                    style={{ color: "black" }}
-                  />
-                  {renderPickerContainer(editingCategory, setEditingCategory, [
-                    { label: "General", value: "General" },
-                    { label: "Work", value: "Work" },
-                    { label: "Personal", value: "Personal" },
-                    { label: "Urgent", value: "Urgent" },
-                  ])}
-                  {renderPickerContainer(editingPriority, setEditingPriority, [
-                    { label: "Low", value: "Low" },
-                    { label: "Medium", value: "Medium" },
-                    { label: "High", value: "High" },
-                  ])}
-                  <Pressable
-                    onPress={() => saveEdit(item.id)}
-                    className="mt-2 bg-blue-500 px-4 py-2 rounded-lg"
-                  >
-                    <Text className="text-white text-center">Save</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => setEditingId(null)}
-                    className="mt-2 bg-gray-500 px-4 py-2 rounded-lg"
-                  >
-                    <Text className="text-white text-center">Cancel</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <Pressable onLongPress={() => handleTaskLongPress(item)}>
-                  <Text
-                    className={`${
-                      item.checked
-                        ? "text-gray-400 line-through"
-                        : "text-white"
-                    }`}
-                  >
-                    {item.label}
-                  </Text>
-                  <Text className="text-sm text-gray-400">
-                    {item.category} | Priority: {item.priority}
-                  </Text>
-                  <Pressable
-                    onPress={() => {
-                      setEditingId(item.id);
-                      setEditingCategory(item.category);
-                      setEditingPriority(item.priority);
-                    }}
-                    className="mt-2 bg-blue-500 px-4 py-1 rounded-lg w-24"
-                  >
-                    <Text className="text-white text-center text-sm">Edit</Text>
-                  </Pressable>
-                </Pressable>
-              )}
-            </View>
-          </View>
-        </Animated.View>
-      </Swipeable>
-    );
-  };
-
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View className="flex-1 py-16 bg-background items-center px-6">
         <View className="flex flex-row gap-5">
           <Text className="text-6xl font-bold mb-4 text-white text-center">HallPass</Text>
-          <CircleCheck size={60} color="#614E48"  />
-
-
-
+          <CircleCheck size={60} color="#614E48" />
         </View>
 
         {filteredTasks.length > 0 && (
-  <>
-    {renderPickerContainer(priorityFilter, setPriorityFilter, [
-      { label: "All Priorities", value: "All" },
-      { label: "Low", value: "Low" },
-      { label: "Medium", value: "Medium" },
-      { label: "High", value: "High" },
-    ])}
+          <>
+            {renderPickerContainer(priorityFilter, setPriorityFilter, [
+              { label: "All Priorities", value: "All" },
+              { label: "Low", value: "Low" },
+              { label: "Medium", value: "Medium" },
+              { label: "High", value: "High" },
+            ])}
 
-    {renderPickerContainer(categoryFilter, setCategoryFilter, [
-      { label: "All Categories", value: "All" },
-      { label: "General", value: "General" },
-      { label: "Work", value: "Work" },
-      { label: "Personal", value: "Personal" },
-      { label: "Urgent", value: "Urgent" },
-    ])}
-  </>
-)}
-
+            {renderPickerContainer(categoryFilter, setCategoryFilter, [
+              { label: "All Categories", value: "All" },
+              { label: "General", value: "General" },
+              { label: "Work", value: "Work" },
+              { label: "Personal", value: "Personal" },
+              { label: "Urgent", value: "Urgent" },
+            ])}
+          </>
+        )}
 
         {filteredTasks.length === 0 ? (
           <View className="flex-1 justify-center items-center">
@@ -337,7 +297,19 @@ export default function HomeScreen() {
             data={filteredTasks}
             keyExtractor={(item) => item.id.toString()}
             className="w-full mt-4"
-            renderItem={({ item }) => renderTask(item)}
+            renderItem={({ item }) => (
+              <TaskItem
+                item={item}
+                onDelete={deleteTask}
+                onToggle={toggleTask}
+                onLongPress={handleTaskLongPress}
+                onEdit={(task) => {
+                  setEditingId(task.id);
+                  setEditingCategory(task.category);
+                  setEditingPriority(task.priority);
+                }}
+              />
+            )}
           />
         )}
 
@@ -351,53 +323,59 @@ export default function HomeScreen() {
         )}
 
         {isAdding && (
-          <View className="mt-6 w-full">
-            <TextInput
-              value={newTaskLabel}
-              onChangeText={setNewTaskLabel}
-              placeholder="Enter task"
-              onSubmitEditing={addTask}
-              autoFocus
-              className="px-4 py-2 border border-gray-400 rounded-lg mb-2"
-              style={{ color: "white" }}
-              placeholderTextColor="gray"
-            />
-            {renderPickerContainer(newTaskCategory, setNewTaskCategory, [
-              { label: "General", value: "General" },
-              { label: "Work", value: "Work" },
-              { label: "Personal", value: "Personal" },
-              
-            ])}
-            {renderPickerContainer(newTaskPriority, setNewTaskPriority, [
-              { label: "Low", value: "Low" },
-              { label: "Medium", value: "Medium" },
-              { label: "High", value: "High" },
-              { label: "Urgent", value: "Urgent" },
-            ])}
+          <View className="mt-6 w-full flex flex-row items-start">
+            <View className="flex-1">
+              <TextInput
+                value={newTaskLabel}
+                onChangeText={setNewTaskLabel}
+                placeholder="Enter task"
+                onSubmitEditing={addTask}
+                autoFocus
+                className="px-4 py-2 border border-gray-400 rounded-lg mb-2"
+                style={{ color: "white" }}
+                placeholderTextColor="gray"
+              />
+              {renderPickerContainer(newTaskCategory, setNewTaskCategory, [
+                { label: "General", value: "General" },
+                { label: "Work", value: "Work" },
+                { label: "Personal", value: "Personal" },
+              ])}
+              {renderPickerContainer(newTaskPriority, setNewTaskPriority, [
+                { label: "Low", value: "Low" },
+                { label: "Medium", value: "Medium" },
+                { label: "High", value: "High" },
+                { label: "Urgent", value: "Urgent" },
+              ])}
 
-            <Pressable
-              onPress={addTask}
-              className="bg-green-500 px-6 py-2 rounded-lg mt-2"
-            >
-              <Text className="text-white text-center">Save Task</Text>
-            </Pressable>
+              <Pressable
+                onPress={addTask}
+                className="bg-green-500 px-6 py-2 rounded-lg mt-2"
+              >
+                <Text className="text-white text-center">Save Task</Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
         {showUndo && lastDeletedTask && (
-          <View className="absolute bottom-4 left-4 right-4 bg-gray-800 px-4 py-3 rounded-lg flex-row justify-between items-center">
-            <Text className="text-white flex-1">Task deleted</Text>
+          <Animated.View
+            style={{
+              opacity: fadeAnimUndo,
+              position: "absolute",
+              bottom: 8,
+              right: 8,
+            }}
+          >
             <Pressable
               onPress={() => {
                 setTasks((prev) => [...prev, lastDeletedTask]);
                 setShowUndo(false);
-                setLastDeletedTask(null);
               }}
-              className="ml-4"
+              className="bg-blue-500 rounded-full w-16 h-16 justify-center items-center"
             >
-              <Text className="text-blue-400 font-bold">UNDO</Text>
+              <Text className="text-white text-lg">Undo</Text>
             </Pressable>
-          </View>
+          </Animated.View>
         )}
       </View>
     </TouchableWithoutFeedback>
