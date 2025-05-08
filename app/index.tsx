@@ -10,6 +10,8 @@ import {
   Alert,
   TouchableWithoutFeedback,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Swipeable } from "react-native-gesture-handler";
@@ -25,8 +27,14 @@ type Task = {
   priority: "Low" | "Medium" | "High" | "Urgent";
 };
 
-// TaskItem component for rendering each task
-const TaskItem = ({ item, onDelete, onToggle, onLongPress, onEdit }: {
+// TaskItem component
+const TaskItem = ({
+  item,
+  onDelete,
+  onToggle,
+  onLongPress,
+  onEdit,
+}: {
   item: Task;
   onDelete: (id: number) => void;
   onToggle: (id: number) => void;
@@ -69,7 +77,9 @@ const TaskItem = ({ item, onDelete, onToggle, onLongPress, onEdit }: {
         className="mb-3 border-b border-gray-400 w-full px-4"
       >
         <Pressable onLongPress={() => onLongPress(item)} className="py-3">
-          <Text className={`text-white ${item.checked ? "line-through text-gray-400" : ""}`}>
+          <Text
+            className={`text-white ${item.checked ? "line-through text-gray-400" : ""}`}
+          >
             {item.label}
           </Text>
           <Text className="text-sm text-gray-400">
@@ -90,17 +100,18 @@ const TaskItem = ({ item, onDelete, onToggle, onLongPress, onEdit }: {
 export default function HomeScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editingCategory, setEditingCategory] = useState<string>("General");
+  const [editingCategory, setEditingCategory] = useState("General");
   const [editingPriority, setEditingPriority] = useState<"Low" | "Medium" | "High" | "Urgent">("Low");
-  const [newTaskLabel, setNewTaskLabel] = useState<string>("");
-  const [newTaskCategory, setNewTaskCategory] = useState<string>("General");
+  const [newTaskLabel, setNewTaskLabel] = useState("");
+  const [newTaskCategory, setNewTaskCategory] = useState("General");
   const [newTaskPriority, setNewTaskPriority] = useState<"Low" | "Medium" | "High" | "Urgent">("Low");
   const [priorityFilter, setPriorityFilter] = useState<"All" | "Low" | "Medium" | "High">("All");
-  const [categoryFilter, setCategoryFilter] = useState<string>("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
   const [isAdding, setIsAdding] = useState(false);
   const [lastDeletedTask, setLastDeletedTask] = useState<Task | null>(null);
   const [showUndo, setShowUndo] = useState(false);
-  const fadeAnimUndo = useRef(new Animated.Value(0)).current; // Animation for Undo button
+  const fadeAnimUndo = useRef(new Animated.Value(0)).current;
+  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     (async () => {
@@ -112,6 +123,12 @@ export default function HomeScreen() {
   useEffect(() => {
     saveTasks(tasks);
   }, [tasks]);
+
+  useEffect(() => {
+    if (isAdding && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isAdding]);
 
   const saveTasks = async (tasksToSave: Task[]) => {
     try {
@@ -159,53 +176,30 @@ export default function HomeScreen() {
     setNewTaskCategory("General");
     setNewTaskPriority("Low");
     setIsAdding(false);
-  };
-
-  const updateTaskLabel = (id: number, newText: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id ? { ...task, label: newText } : task
-      )
-    );
-  };
-
-  const saveEdit = (id: number) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? { ...task, category: editingCategory, priority: editingPriority }
-          : task
-      )
-    );
-    setEditingId(null);
+    Keyboard.dismiss();
   };
 
   const deleteTask = (id: number) => {
     const deleted = tasks.find((task) => task.id === id);
     if (!deleted) return;
-
     setLastDeletedTask(deleted);
     setTasks((prev) => prev.filter((task) => task.id !== id));
     setShowUndo(true);
-
-    // Trigger the fade-in animation for Undo button
     Animated.timing(fadeAnimUndo, {
       toValue: 1,
       duration: 500,
       useNativeDriver: true,
     }).start();
-
     setTimeout(() => {
-      setShowUndo(false);
-      setLastDeletedTask(null);
-
-      // Fade-out animation after 5 seconds
       Animated.timing(fadeAnimUndo, {
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
-      }).start();
-    }, 5000); // Undo button fades out after 5 seconds
+      }).start(() => {
+        setShowUndo(false);
+        setLastDeletedTask(null);
+      });
+    }, 5000);
   };
 
   const handleTaskLongPress = (item: Task) => {
@@ -217,6 +211,7 @@ export default function HomeScreen() {
           text: "Edit",
           onPress: () => {
             setEditingId(item.id);
+            setNewTaskLabel(item.label);
             setEditingCategory(item.category);
             setEditingPriority(item.priority);
           },
@@ -238,20 +233,16 @@ export default function HomeScreen() {
       (categoryFilter === "All" || task.category === categoryFilter)
   );
 
-  const renderPickerContainer = <T extends string>( 
-    selectedValue: T, 
-    onValueChange: (value: T) => void, 
-    items: { label: string; value: T }[] 
+  const renderPickerContainer = <T extends string>(
+    selectedValue: T,
+    onValueChange: (value: T) => void,
+    items: { label: string; value: T }[]
   ) => (
     <View className="rounded-lg border border-white mb-2 w-40 overflow-hidden">
       <Picker
         selectedValue={selectedValue}
         onValueChange={onValueChange}
-        style={{
-          backgroundColor: 'black',
-          color: 'white',
-          width: '100%',
-        }}
+        style={{ backgroundColor: 'black', color: 'white', width: '100%' }}
         dropdownIconColor="white"
       >
         {items.map(({ label, value }) => (
@@ -263,7 +254,10 @@ export default function HomeScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View className="flex-1 py-16 bg-background items-center px-6">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1 bg-background items-center px-6 pt-16"
+      >
         <View className="flex flex-row gap-5">
           <Text className="text-6xl font-bold mb-4 text-white text-center">HallPass</Text>
           <CircleCheck size={60} color="#614E48" />
@@ -277,7 +271,6 @@ export default function HomeScreen() {
               { label: "Medium", value: "Medium" },
               { label: "High", value: "High" },
             ])}
-
             {renderPickerContainer(categoryFilter, setCategoryFilter, [
               { label: "All Categories", value: "All" },
               { label: "General", value: "General" },
@@ -289,9 +282,7 @@ export default function HomeScreen() {
         )}
 
         {filteredTasks.length === 0 ? (
-          <View className="flex-1 justify-center items-center">
-            <Text className="text-lg text-gray-500 mt-4 text-center">No tasks to display.</Text>
-          </View>
+          <Text className="text-lg text-gray-500 mt-4 text-center">No tasks to display.</Text>
         ) : (
           <FlatList
             data={filteredTasks}
@@ -305,6 +296,7 @@ export default function HomeScreen() {
                 onLongPress={handleTaskLongPress}
                 onEdit={(task) => {
                   setEditingId(task.id);
+                  setNewTaskLabel(task.label);
                   setEditingCategory(task.category);
                   setEditingPriority(task.priority);
                 }}
@@ -313,47 +305,91 @@ export default function HomeScreen() {
           />
         )}
 
-        {!isAdding && (
-          <Pressable
-            onPress={() => setIsAdding(true)}
-            className="mt-6 bg-red-900 px-6 py-3 rounded-lg self-center"
-          >
-            <Text className="text-white font-semibold">+ Add Task</Text>
-          </Pressable>
+        {isAdding && (
+          <View className="mt-6 w-full">
+            <TextInput
+              ref={inputRef}
+              value={newTaskLabel}
+              onChangeText={setNewTaskLabel}
+              placeholder="Enter task"
+              placeholderTextColor="gray"
+              onSubmitEditing={addTask}
+              className="px-4 py-2 border border-gray-400 rounded-lg mb-2 text-white"
+            />
+            {renderPickerContainer(newTaskCategory, setNewTaskCategory, [
+              { label: "General", value: "General" },
+              { label: "Work", value: "Work" },
+              { label: "Personal", value: "Personal" },
+            ])}
+            {renderPickerContainer(newTaskPriority, setNewTaskPriority, [
+              { label: "Low", value: "Low" },
+              { label: "Medium", value: "Medium" },
+              { label: "High", value: "High" },
+              { label: "Urgent", value: "Urgent" },
+            ])}
+            <Pressable onPress={addTask} className="bg-green-500 px-6 py-2 rounded-lg mt-2">
+              <Text className="text-white text-center">Save Task</Text>
+            </Pressable>
+          </View>
         )}
 
-        {isAdding && (
-          <View className="mt-6 w-full flex flex-row items-start">
-            <View className="flex-1">
-              <TextInput
-                value={newTaskLabel}
-                onChangeText={setNewTaskLabel}
-                placeholder="Enter task"
-                onSubmitEditing={addTask}
-                autoFocus
-                className="px-4 py-2 border border-gray-400 rounded-lg mb-2"
-                style={{ color: "white" }}
-                placeholderTextColor="gray"
-              />
-              {renderPickerContainer(newTaskCategory, setNewTaskCategory, [
-                { label: "General", value: "General" },
-                { label: "Work", value: "Work" },
-                { label: "Personal", value: "Personal" },
-              ])}
-              {renderPickerContainer(newTaskPriority, setNewTaskPriority, [
-                { label: "Low", value: "Low" },
-                { label: "Medium", value: "Medium" },
-                { label: "High", value: "High" },
-                { label: "Urgent", value: "Urgent" },
-              ])}
+        {editingId !== null && (
+          <View className="mt-6 w-full">
+            <TextInput
+              value={newTaskLabel}
+              onChangeText={setNewTaskLabel}
+              placeholder="Edit task"
+              placeholderTextColor="gray"
+              className="px-4 py-2 border border-gray-400 rounded-lg mb-2 text-white"
+              autoFocus
+            />
+            {renderPickerContainer(editingCategory, setEditingCategory, [
+              { label: "General", value: "General" },
+              { label: "Work", value: "Work" },
+              { label: "Personal", value: "Personal" },
+            ])}
+            {renderPickerContainer(editingPriority, setEditingPriority, [
+              { label: "Low", value: "Low" },
+              { label: "Medium", value: "Medium" },
+              { label: "High", value: "High" },
+              { label: "Urgent", value: "Urgent" },
+            ])}
+            <Pressable
+              onPress={() => {
+                setTasks((prev) =>
+                  prev.map((task) =>
+                    task.id === editingId
+                      ? { ...task, label: newTaskLabel.trim(), category: editingCategory, priority: editingPriority }
+                      : task
+                  )
+                );
+                setEditingId(null);
+                setNewTaskLabel("");
+              }}
+              className="bg-green-500 px-6 py-2 rounded-lg mt-2"
+            >
+              <Text className="text-white text-center">Save Changes</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setEditingId(null);
+                setNewTaskLabel("");
+              }}
+              className="bg-red-600 px-6 py-2 rounded-lg mt-2"
+            >
+              <Text className="text-white text-center">Cancel</Text>
+            </Pressable>
+          </View>
+        )}
 
-              <Pressable
-                onPress={addTask}
-                className="bg-green-500 px-6 py-2 rounded-lg mt-2"
-              >
-                <Text className="text-white text-center">Save Task</Text>
-              </Pressable>
-            </View>
+        {!isAdding && editingId === null && (
+          <View className="absolute bottom-6 w-full flex items-center justify-center">
+            <Pressable
+              onPress={() => setIsAdding(true)}
+              className="bg-red-900 w-16 h-16 rounded-full justify-center items-center"
+            >
+              <Text className="text-white text-3xl font-bold">+</Text>
+            </Pressable>
           </View>
         )}
 
@@ -362,8 +398,8 @@ export default function HomeScreen() {
             style={{
               opacity: fadeAnimUndo,
               position: "absolute",
-              bottom: 8,
-              right: 8,
+              bottom: 80,
+              right: 16,
             }}
           >
             <Pressable
@@ -371,13 +407,13 @@ export default function HomeScreen() {
                 setTasks((prev) => [...prev, lastDeletedTask]);
                 setShowUndo(false);
               }}
-              className="bg-blue-500 rounded-full w-16 h-16 justify-center items-center"
+              className="bg-red-900 rounded-full w-16 h-16 justify-center items-center"
             >
               <Text className="text-white text-lg">Undo</Text>
             </Pressable>
           </Animated.View>
         )}
-      </View>
+      </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
 }
