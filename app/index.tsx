@@ -28,7 +28,7 @@ type Task = {
 };
 
 // TaskItem component
-const TaskItem = ({
+export const TaskItem = ({
   item,
   onDelete,
   onToggle,

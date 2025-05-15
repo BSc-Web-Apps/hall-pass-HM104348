@@ -1,4 +1,5 @@
 import { render, screen, userEvent } from "@testing-library/react-native";
+import { TaskItem } from "../app/index";
 
 // ... other imports and setup
 
@@ -11,7 +12,7 @@ test("toggles completion status when pressed", async () => {
     isChecked: false,
   };
 
-  render(<Task task={task} onUpdate={mockToggle} />);
+  render(<TaskItem task={task} onUpdate={mockToggle} />);
 
   const checkbox = screen.getByTestId("checkbox");
 
