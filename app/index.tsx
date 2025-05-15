@@ -105,7 +105,7 @@ export default function HomeScreen() {
   const [newTaskLabel, setNewTaskLabel] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState("General");
   const [newTaskPriority, setNewTaskPriority] = useState<"Low" | "Medium" | "High" | "Urgent">("Low");
-  const [priorityFilter, setPriorityFilter] = useState<"All" | "Low" | "Medium" | "High" | "Urgent">("All");
+  const [priorityFilter, setPriorityFilter] = useState<"All" | "Low" | "Medium" | "High">("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [isAdding, setIsAdding] = useState(false);
   const [lastDeletedTask, setLastDeletedTask] = useState<Task | null>(null);
@@ -270,7 +270,6 @@ export default function HomeScreen() {
               { label: "Low", value: "Low" },
               { label: "Medium", value: "Medium" },
               { label: "High", value: "High" },
-              { label: "Urgent", value: "Urgent" },
             ])}
             {renderPickerContainer(categoryFilter, setCategoryFilter, [
               { label: "All Categories", value: "All" },
