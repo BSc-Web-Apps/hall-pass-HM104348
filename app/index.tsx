@@ -64,6 +64,9 @@ export const TaskItem = ({
     <Swipeable renderRightActions={renderRightActions}>
       <Animated.View
         style={{
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
           opacity: fadeAnim,
           transform: [
             {
@@ -76,15 +79,30 @@ export const TaskItem = ({
         }}
         className="mb-3 border-b border-gray-400 w-full px-4"
       >
-        <Pressable onLongPress={() => onLongPress(item)} className="py-3">
-          <Text
-            className={`text-white ${item.checked ? "line-through text-gray-400" : ""}`}
-          >
-            {item.label}
-          </Text>
-          <Text className="text-sm text-gray-400">
-            {item.category} | Priority: {item.priority}
-          </Text>
+        {/* Checkbox */}
+        <Pressable
+          onPress={() => onToggle(item.id)}
+          className={`w-6 h-6 border-2 border-white mr-4 items-center justify-center ${
+            item.checked ? "bg-blue-500" : "bg-transparent"
+          }`}
+        >
+          {item.checked && <Text className="text-white text-xs">✓</Text>}
+        </Pressable>
+
+        {/* Task details */}
+        <Pressable onLongPress={() => onLongPress(item)} className="flex flex-row flex-1 justify-between items-center py-3">
+          <View className="flex flex-col">
+            <Text
+              className={`text-white ${item.checked ? "line-through text-gray-400" : ""}`}
+            >
+              {item.label}
+            </Text>
+            <Text className="text-sm text-gray-400">
+              {item.category} | Priority: {item.priority}
+            </Text>
+          </View>
+
+          {/* Edit button */}
           <Pressable
             onPress={() => onEdit(item)}
             className="mt-2 bg-blue-500 px-4 py-1 rounded-lg w-24"
