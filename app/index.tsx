@@ -81,6 +81,7 @@ export const TaskItem = ({
       >
         {/* Checkbox */}
         <Pressable
+          testID="checkbox"
           onPress={() => onToggle(item.id)}
           className={`w-6 h-6 border-2 border-white mr-4 items-center justify-center ${
             item.checked ? "bg-blue-500" : "bg-transparent"
